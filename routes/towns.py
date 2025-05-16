@@ -73,11 +73,9 @@ def clean_town_name(name):
 def geocode_town(town_name, department_name, dept_code):
     current_app.logger.info(f"Geocode information for {town_name}: code: {dept_code}")
     cleaned_town_name = clean_town_name(town_name)
-    address = f"{cleaned_town_name}, {department_name}"
+    address = f"{cleaned_town_name}, {department_name}, France"
     params = {
       "address": address,
-      "components": "country:FR",
-      "region": "fr",
       "key": os.getenv("GEOCODING_API_KEY")
     }
     resp = requests.get(..., params=params, timeout=5)
