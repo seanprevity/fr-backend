@@ -17,11 +17,23 @@ def location_info():
     name = request.args.get("name")
     lang = request.args.get("lang", "en")
     dept_code = unquote(request.args.get("code", ""))
-    if not name: return jsonify({"error": "Missing 'name' parameter"}), 400
 
-    name = normalize_string(name)
-    town = get_town_full_info(name, dept_code)
-    if not town: return jsonify({"error": "Town not found"}), 404
+    print(f"[DEBUG] Incoming /location request → name={name}, code={dept_code}, lang={lang}")
+
+    if not name:
+        print("[ERROR] Missing 'name' parameter")
+        return jsonify({"error": "Missing 'name' parameter"}), 400
+
+    name_normalized = normalize_string(name)
+    print(f"[DEBUG] Normalized name → {name_normalized}")
+
+    town = get_town_full_info(name_normalized, dept_code)
+
+    if not town:
+        print(f"[ERROR] Town not found in DB → name={name_normalized}, code={dept_code}")
+        return jsonify({"error": "Town not found"}), 404
+
+    print(f"[DEBUG] Town found → {town}")
 
     metadata = {
         **town,
@@ -31,20 +43,23 @@ def location_info():
         "region_name": town["region_name"],
     }
 
-    # fetch images 
+    print(f"[DEBUG] Metadata → {metadata}")
+
     images_response = fetch_wiki_images(town_name=town["name"], department_name=town["department_name"])
     images_list = images_response.get("images", [])
+    print(f"[DEBUG] Wiki images → {images_list[:2]}...")  # Print first 2 for sanity
 
-    # Try cache first
     cached = get_cached_description(town["code"], dept_code, lang)
     if cached:
+        print("[DEBUG] Returning cached description")
         return jsonify({"description": cached, "metadata": metadata, "images": images_list})
 
-    # Generate & Cache description
-    description = get_description(name, town["department_name"], town["region_name"], lang)
+    description = get_description(name_normalized, town["department_name"], town["region_name"], lang)
     cache_description(town["code"], dept_code, lang, description)
+    print("[DEBUG] Description generated and cached")
 
     return jsonify({"description": description, "metadata": metadata, "images": images_list})
+
 
 def get_town_full_info(town_name, dept_code):
     query = text("""
@@ -63,10 +78,16 @@ def get_town_full_info(town_name, dept_code):
 
     session = Session()
     try:
+        print(f"[DEBUG] Running town lookup query → name={town_name}, code={dept_code}")
         row = session.execute(query, {"name": town_name, "code": dept_code}).fetchone()
+
         if not row:
+            print(f"[DEBUG] No row returned for name={town_name}, code={dept_code}")
             return None
-        return dict(row._mapping)
+
+        result = dict(row._mapping)
+        print(f"[DEBUG] Query result row → {result}")
+        return result
     finally:
         Session.remove()
 
