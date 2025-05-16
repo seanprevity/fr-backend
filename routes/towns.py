@@ -73,12 +73,14 @@ def clean_town_name(name):
 def geocode_town(town_name, department_name, dept_code):
     current_app.logger.info(f"Geocode information for {town_name}: code: {dept_code}")
     cleaned_town_name = clean_town_name(town_name)
-    address = f"{cleaned_town_name}, {department_name}, France"
+    address = f"{cleaned_town_name}, {department_name}"
     params = {
       "address": address,
+      "components": "country:FR",
+      "region": "fr",
       "key": os.getenv("GEOCODING_API_KEY")
     }
-    resp = requests.get(..., params=params, timeout=5)
+    resp = requests.get("https://maps.googleapis.com/maps/api/geocode/json", params=params, timeout=5)
     data = resp.json()
     if data.get("status") != "OK" or not data.get("results"):
         current_app.logger.error(f"Geocode failed for {address}: {data.get('status')}")
