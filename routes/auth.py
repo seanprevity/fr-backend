@@ -7,6 +7,7 @@ from flask_jwt_extended import (
     jwt_required,
     get_jwt_identity,
 )
+import traceback
 from extensions import Session
 from sqlalchemy import text
 
@@ -35,34 +36,42 @@ def register():
 
 @auth_bp.route("/login", methods=["POST"])
 def login():
-    data = request.get_json() or {}
-    username = data.get("username")
-    password = data.get("password")
+    try:
+        data = request.get_json() or {}
+        current_app.logger.info(f"Received login payload: {data}")
 
-    if not (username and password):
-        return jsonify({"error": "Username and password required."}), 400
+        username = data.get("username")
+        password = data.get("password")
 
-    user = get_user_by_username(username)
-    if not user or not check_password_hash(user["password"], password):
-        return jsonify({"error": "Invalid credentials."}), 401
+        if not username or not password:
+            current_app.logger.warning("Missing username or password")
+            return jsonify({"error": "Username and password required."}), 400
 
-    # Create JWT (String) and set it in an HTTP-only cookie
-    access_token = create_access_token(identity=str(user["user_id"]))
-    resp = jsonify({
-        "user": {
-            "user_id": user["user_id"],
-            "username": user["username"],
-            "email": user["email"],
-        }
-    })
-    set_access_cookies(resp, access_token)
-    return resp, 200
+        user = get_user_by_username(username)
+        if not user:
+            current_app.logger.warning(f"No user found for username: {username}")
+            return jsonify({"error": "Invalid credentials."}), 401
 
-@auth_bp.route("/logout", methods=["POST"])
-def logout():
-    resp = jsonify({"logout": True})
-    unset_jwt_cookies(resp)
-    return resp, 200
+        if not check_password_hash(user.get("password", ""), password):
+            current_app.logger.warning("Password check failed")
+            return jsonify({"error": "Invalid credentials."}), 401
+
+        access_token = create_access_token(identity=str(user["user_id"]))
+        resp = jsonify({
+            "user": {
+                "user_id": user["user_id"],
+                "username": user["username"],
+                "email": user["email"],
+            }
+        })
+        set_access_cookies(resp, access_token)
+        return resp, 200
+
+    except Exception as e:
+        current_app.logger.error("Exception during login:")
+        current_app.logger.error(str(e))
+        traceback.print_exc()  # for Azure Log Stream
+        return jsonify({"error": "Internal server error"}), 500
 
 def create_user(username, email, password_hash):
     sql = text("""
