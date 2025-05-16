@@ -74,6 +74,10 @@ def geocode_town(town_name, department_name, dept_code):
     current_app.logger.info(f"Geocode information for {town_name}: code: {dept_code}")
     cleaned_town_name = clean_town_name(town_name)
     address = f"{cleaned_town_name}, {department_name}, France"
+    
+    sys.stderr.write(f"[DEBUG] cleaned_town_name = '{cleaned_town_name}, department = '{department_name}'\n")
+    sys.stderr.flush()
+    
     resp = requests.get(
         "https://maps.googleapis.com/maps/api/geocode/json",
         params={
@@ -129,9 +133,6 @@ def geocode_searched_town():
     town = unquote(request.args.get("town", "")).strip()
     dept_code = unquote(request.args.get("department_code", "")).strip()
     dept_name = unquote(request.args.get("department_name", "")).strip()
-    
-    sys.stderr.write(f"[DEBUG] normalized dept_name = '{dept_name}'\n")
-    sys.stderr.flush()
     
     if not (town or dept_code): return jsonify({"error: Missing parameters." }), 404
     official, lat, lng = geocode_town(town, dept_name, dept_code)
