@@ -3,6 +3,7 @@ from services.openai_service import get_description
 from extensions import Session
 from .images import fetch_wiki_images
 from sqlalchemy import text
+from urllib.parse import unquote
 import unicodedata
 
 location_bp = Blueprint("location", __name__, url_prefix="/api")
@@ -15,7 +16,7 @@ def normalize_string(s):
 def location_info():
     name = request.args.get("name")
     lang = request.args.get("lang", "en")
-    dept_code = request.args.get("code")
+    dept_code = unquote(request.args.get("code", ""))
     if not name: return jsonify({"error": "Missing 'name' parameter"}), 400
 
     name = normalize_string(name)
