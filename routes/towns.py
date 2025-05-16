@@ -75,9 +75,6 @@ def geocode_town(town_name, department_name, dept_code):
     cleaned_town_name = clean_town_name(town_name)
     address = f"{cleaned_town_name}, {department_name}, France"
     
-    sys.stderr.write(f"[DEBUG] cleaned_town_name = '{cleaned_town_name}, department = '{department_name}'\n")
-    sys.stderr.flush()
-    
     resp = requests.get(
         "https://maps.googleapis.com/maps/api/geocode/json",
         params={
@@ -94,6 +91,9 @@ def geocode_town(town_name, department_name, dept_code):
     top = data["results"][0]
     loc = top["geometry"]["location"]
     lat, lng = loc["lat"], loc["lng"]
+    
+    sys.stderr.write(f"[DEBUG] {top}'\n")
+    sys.stderr.flush()
 
     # find a component typed 'locality' or 'postal_town'
     official_name = None
