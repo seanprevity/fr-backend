@@ -5,6 +5,8 @@ from .images import fetch_wiki_images
 from sqlalchemy import text
 from urllib.parse import unquote
 import unicodedata
+import logging
+logger = logging.getLogger("france_app")
 
 location_bp = Blueprint("location", __name__, url_prefix="/api")
 
@@ -18,22 +20,22 @@ def location_info():
     lang = request.args.get("lang", "en")
     dept_code = unquote(request.args.get("code", ""))
 
-    print(f"[DEBUG] Incoming /location request → name={name}, code={dept_code}, lang={lang}")
+    logger.debug(f"Incoming /location request → name={name}, code={dept_code}, lang={lang}")
 
     if not name:
-        print("[ERROR] Missing 'name' parameter")
+        logger.warning("Missing 'name' parameter")
         return jsonify({"error": "Missing 'name' parameter"}), 400
 
     name_normalized = normalize_string(name)
-    print(f"[DEBUG] Normalized name → {name_normalized}")
+    logger.debug(f"Normalized name → {name_normalized}")
 
     town = get_town_full_info(name_normalized, dept_code)
 
     if not town:
-        print(f"[ERROR] Town not found in DB → name={name_normalized}, code={dept_code}")
+        logger.warning(f"Town not found in DB → name={name_normalized}, code={dept_code}")
         return jsonify({"error": "Town not found"}), 404
 
-    print(f"[DEBUG] Town found → {town}")
+    logger.debug(f"Town found → {town}")
 
     metadata = {
         **town,
@@ -43,20 +45,20 @@ def location_info():
         "region_name": town["region_name"],
     }
 
-    print(f"[DEBUG] Metadata → {metadata}")
+    logger.debug(f"Metadata → {metadata}")
 
     images_response = fetch_wiki_images(town_name=town["name"], department_name=town["department_name"])
     images_list = images_response.get("images", [])
-    print(f"[DEBUG] Wiki images → {images_list[:2]}...")  # Print first 2 for sanity
+    logger.debug(f"Wiki images → {images_list[:2]}...")
 
     cached = get_cached_description(town["code"], dept_code, lang)
     if cached:
-        print("[DEBUG] Returning cached description")
+        logger.debug("Returning cached description")
         return jsonify({"description": cached, "metadata": metadata, "images": images_list})
 
     description = get_description(name_normalized, town["department_name"], town["region_name"], lang)
     cache_description(town["code"], dept_code, lang, description)
-    print("[DEBUG] Description generated and cached")
+    logger.debug("Description generated and cached")
 
     return jsonify({"description": description, "metadata": metadata, "images": images_list})
 
@@ -78,15 +80,15 @@ def get_town_full_info(town_name, dept_code):
 
     session = Session()
     try:
-        print(f"[DEBUG] Running town lookup query → name={town_name}, code={dept_code}")
+        logger.debug(f"Running town lookup query → name={town_name}, code={dept_code}")
         row = session.execute(query, {"name": town_name, "code": dept_code}).fetchone()
 
         if not row:
-            print(f"[DEBUG] No row returned for name={town_name}, code={dept_code}")
+            logger.warning(f"No row returned for name={town_name}, code={dept_code}")
             return None
 
         result = dict(row._mapping)
-        print(f"[DEBUG] Query result row → {result}")
+        logger.debug(f"Query result row → {result}")
         return result
     finally:
         Session.remove()
