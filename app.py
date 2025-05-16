@@ -11,15 +11,6 @@ from routes.ratings import ratings_bp
 from dotenv import load_dotenv
 from datetime import timedelta
 from routes.weather import weather_bp
-import logging
-
-logging.basicConfig(
-    level=logging.DEBUG,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
-)
-
-logger = logging.getLogger("france_app")
-logger.setLevel(logging.DEBUG)
 
 load_dotenv()
 
