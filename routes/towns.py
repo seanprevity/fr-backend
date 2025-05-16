@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 from .location import get_town_full_info
 import unicodedata
 from urllib.parse import unquote
+import sys
 
 load_dotenv()
 
@@ -128,6 +129,9 @@ def geocode_searched_town():
     town = unquote(request.args.get("town", "")).strip()
     dept_code = unquote(request.args.get("department_code", "")).strip()
     dept_name = unquote(request.args.get("department_name", "")).strip()
+    
+    sys.stderr.write(f"[DEBUG] normalized dept_name = '{dept_name}'\n")
+    sys.stderr.flush()
     
     if not (town or dept_code): return jsonify({"error: Missing parameters." }), 404
     official, lat, lng = geocode_town(town, dept_name, dept_code)
