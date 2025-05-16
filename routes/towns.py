@@ -73,22 +73,29 @@ def clean_town_name(name):
 def geocode_town(town_name, department_name, dept_code):
     current_app.logger.info(f"Geocode information for {town_name}: code: {dept_code}")
     cleaned_town_name = clean_town_name(town_name)
-    address = f"{cleaned_town_name}, {department_name}, France"
-    
-    resp = requests.get(
-        "https://maps.googleapis.com/maps/api/geocode/json",
-        params={
-            "address": address,
-            "key": os.getenv("GEOCODING_API_KEY")
-        },
-        timeout=5
-    )
+    address = f"{cleaned_town_name}, {department_name}"
+    params = {
+      "address": address,
+      "components": "country:FR",
+      "region": "fr",
+      "key": os.getenv("GEOCODING_API_KEY")
+    }
+    resp = requests.get(..., params=params, timeout=5)
     data = resp.json()
     if data.get("status") != "OK" or not data.get("results"):
         current_app.logger.error(f"Geocode failed for {address}: {data.get('status')}")
         return None, None, None
 
-    top = data["results"][0]
+    top = None
+    for r in data.get("results", []):
+        if any(t in ["locality","postal_town"] for t in r.get("types", [])):
+            top = r
+            break
+
+    if not top:
+        # no match at that granularity → treat as failure
+        current_app.logger.error(f"Geocode no locality for {address}")
+        return jsonify({"error":"Geocoding failed"}), 500
     loc = top["geometry"]["location"]
     lat, lng = loc["lat"], loc["lng"]
     
